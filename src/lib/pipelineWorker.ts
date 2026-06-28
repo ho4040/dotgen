@@ -9,6 +9,7 @@
  */
 import { buildPalette } from './kmeans';
 import { recolorMerged } from './mergePalette';
+import { applyOutline } from './outline';
 import { applyPaletteEdits } from './paletteEdit';
 import { runPipeline } from './pipeline';
 import { quantize } from './quantize';
@@ -91,6 +92,11 @@ ctx.onmessage = (event: MessageEvent<InboundMessage>): void => {
       alphaThreshold: 1,
     });
   }
+
+  // Final pass: outline the transparent/opaque seam with the darkest output
+  // color. Runs last so it uses the effective (merged/overridden) colors and
+  // the dark line is never re-quantized away.
+  if (params.outline) applyOutline(result);
 
   ctx.postMessage(
     {

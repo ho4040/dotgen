@@ -156,6 +156,14 @@ export default function App() {
             onUnmerge={actions.unmergeColors}
             onClearMerges={actions.clearMerges}
           />
+          <label className="field--check">
+            <input
+              type="checkbox"
+              checked={pa.outline}
+              onChange={(e) => actions.setOutline(e.target.checked)}
+            />
+            <span>투명 경계에 1px 외곽선 (가장 어두운 색)</span>
+          </label>
           {editId !== null && editColor !== undefined && editRgb !== null && (
             <ColorSliders
               id={editId}

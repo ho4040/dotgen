@@ -76,4 +76,6 @@ export interface PipelineParams {
   readonly paletteEdits: ReadonlyMap<number, RGB>;
   /** When set, recolor the finished image onto this palette as a final pass. */
   readonly paletteOverride: Palette | null;
+  /** When true, trace a 1px darkest-color outline along transparent seams. */
+  readonly outline: boolean;
 }

@@ -4,6 +4,7 @@ import { fetchImageFile, fileToImageData } from '../lib/imageIO';
 import { paletteFromJson } from '../lib/paletteIO';
 import { applyPixelEdits } from '../lib/pixelEdits';
 import { useMerge } from './useMerge';
+import { useOutline } from './useOutline';
 import { usePaletteEdits } from './usePaletteEdits';
 import { usePipelineWorker } from './usePipelineWorker';
 import { usePixelEdits } from './usePixelEdits';
@@ -42,6 +43,8 @@ export interface PixelArtState {
   readonly result: ImageData | null;
   /** True while the worker is computing the result. */
   readonly processing: boolean;
+  /** Whether a 1px boundary outline is drawn along transparent seams. */
+  readonly outline: boolean;
 }
 
 export interface PixelArtActions {
@@ -69,6 +72,8 @@ export interface PixelArtActions {
   importPaletteFile: (file: File) => Promise<void>;
   applyOverridePalette: (palette: Palette) => void;
   clearPaletteOverride: () => void;
+  /** Toggle the transparent-seam outline pass. */
+  setOutline: (on: boolean) => void;
 }
 
 export type UsePixelArt = PixelArtState & { readonly actions: PixelArtActions };
@@ -97,6 +102,7 @@ export function usePixelArt(): UsePixelArt {
     clear: clearPaletteEdits,
   } = usePaletteEdits();
   const { edits: pixelEdits, paint: paintPixel, erase: erasePixel, clear: clearPixelEdits } = usePixelEdits();
+  const { outline, setOutline } = useOutline();
 
   // The cropped/extended source that the rest of the pipeline operates on; the
   // raw `source` is kept only for the original-image preview.
@@ -159,8 +165,9 @@ export function usePixelArt(): UsePixelArt {
       alphaThreshold: ALPHA_THRESHOLD,
       paletteEdits,
       paletteOverride,
+      outline,
     }),
-    [colorCount, transparentIds, mergeGroups, resample, paletteEdits, paletteOverride],
+    [colorCount, transparentIds, mergeGroups, resample, paletteEdits, paletteOverride, outline],
   );
 
   const { palette, result: workerResult, processing } = usePipelineWorker(adjustedSource, params);
@@ -244,6 +251,7 @@ export function usePixelArt(): UsePixelArt {
     resample,
     result,
     processing,
+    outline,
     actions: {
       loadFile,
       loadUrl,
@@ -264,6 +272,7 @@ export function usePixelArt(): UsePixelArt {
       importPaletteFile,
       applyOverridePalette,
       clearPaletteOverride,
+      setOutline,
     },
   };
 }
