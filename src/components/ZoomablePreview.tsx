@@ -11,6 +11,9 @@ interface ZoomablePreviewProps {
   /** When set, the viewer enters paint mode: click/drag paints the pixel under
    * the pointer (panning is disabled) and color-picking is off. */
   readonly onPaintPixel?: (x: number, y: number) => void;
+  /** In paint mode, Alt+click/drag samples the pixel under the pointer instead
+   * of painting (eyedropper). */
+  readonly onEyedrop?: (x: number, y: number) => void;
 }
 
 /** Pointer travel (client px) below which a press-release counts as a click. */
@@ -36,7 +39,7 @@ interface PanOrigin {
 }
 
 /** Result viewer: zoom in/out buttons, drag-to-pan, and a fit reset. */
-export function ZoomablePreview({ image, fitWidth = 320, onPickColor, onPaintPixel }: ZoomablePreviewProps) {
+export function ZoomablePreview({ image, fitWidth = 320, onPickColor, onPaintPixel, onEyedrop }: ZoomablePreviewProps) {
   const [zoom, setZoom] = useState<number>(() => fitZoom(image.width, fitWidth));
   const [panning, setPanning] = useState(false);
   const lastDimsRef = useRef<string>(`${image.width}x${image.height}`);
@@ -103,17 +106,20 @@ export function ZoomablePreview({ image, fitWidth = 320, onPickColor, onPaintPix
     onPickColor({ r: d[i], g: d[i + 1], b: d[i + 2], a: d[i + 3] });
   };
 
-  const paintAt = (clientX: number, clientY: number): void => {
-    if (onPaintPixel === undefined) return;
+  // In paint mode: Alt samples (eyedropper) when an onEyedrop handler is set,
+  // otherwise paints the pixel under the pointer.
+  const actAt = (clientX: number, clientY: number, alt: boolean): void => {
     const p = pixelAt(clientX, clientY);
-    if (p !== null) onPaintPixel(p.x, p.y);
+    if (p === null) return;
+    if (alt && onEyedrop !== undefined) onEyedrop(p.x, p.y);
+    else if (onPaintPixel !== undefined) onPaintPixel(p.x, p.y);
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (paintMode) {
       paintingRef.current = true;
       viewportRef.current?.setPointerCapture(event.pointerId);
-      paintAt(event.clientX, event.clientY);
+      actAt(event.clientX, event.clientY, event.altKey);
       return;
     }
     downRef.current = { x: event.clientX, y: event.clientY };
@@ -126,7 +132,7 @@ export function ZoomablePreview({ image, fitWidth = 320, onPickColor, onPaintPix
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (paintMode) {
-      if (paintingRef.current) paintAt(event.clientX, event.clientY);
+      if (paintingRef.current) actAt(event.clientX, event.clientY, event.altKey);
       return;
     }
     const node = viewportRef.current;
@@ -206,7 +212,10 @@ export function ZoomablePreview({ image, fitWidth = 320, onPickColor, onPaintPix
         <CanvasView image={image} displayWidth={image.width * zoom} className="checker pixelated" />
       </div>
       <p className="muted zoom__hint">
-        {paintMode ? '휠로 확대/축소 · 클릭/드래그로 칠하기' : '휠로 확대/축소 · 드래그로 이동'} ·{' '}
+        {paintMode
+          ? `휠로 확대/축소 · 클릭/드래그로 칠하기${onEyedrop !== undefined ? ' · Alt+클릭 스포이드' : ''}`
+          : '휠로 확대/축소 · 드래그로 이동'}{' '}
+        ·{' '}
         {image.width * zoom}×{image.height * zoom}px 표시
       </p>
     </div>

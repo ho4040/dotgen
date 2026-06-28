@@ -10,6 +10,9 @@ interface PixelEditorProps {
   readonly onColorChange: (rgb: RGB) => void;
   readonly erasing: boolean;
   readonly onErasingChange: (erasing: boolean) => void;
+  /** Eyedropper mode: clicking the preview samples a color instead of painting. */
+  readonly eyedropping: boolean;
+  readonly onEyedropChange: (eyedropping: boolean) => void;
   /** How many pixels currently carry a manual edit (for the counter). */
   readonly editCount: number;
   readonly onClear: () => void;
@@ -36,6 +39,8 @@ export function PixelEditor({
   onColorChange,
   erasing,
   onErasingChange,
+  eyedropping,
+  onEyedropChange,
   editCount,
   onClear,
 }: PixelEditorProps) {
@@ -69,6 +74,10 @@ export function PixelEditor({
         <input type="checkbox" checked={erasing} onChange={(e) => onErasingChange(e.target.checked)} />
         <span>지우개 (픽셀 되돌리기)</span>
       </label>
+      <label className="field--check">
+        <input type="checkbox" checked={eyedropping} onChange={(e) => onEyedropChange(e.target.checked)} />
+        <span>스포이드 (미리보기에서 색 추출)</span>
+      </label>
 
       <div className="palette-editor__actions">
         <span className="muted">수정한 픽셀 {editCount}개</span>
@@ -76,7 +85,10 @@ export function PixelEditor({
           모두 되돌리기
         </button>
       </div>
-      <p className="muted">오른쪽 미리보기에서 클릭 또는 드래그로 칠합니다. 1픽셀씩 선택한 색이 들어갑니다.</p>
+      <p className="muted">
+        오른쪽 미리보기에서 클릭·드래그로 칠합니다. <strong>Alt+클릭</strong> 또는 스포이드 모드로
+        색을 추출할 수 있습니다.
+      </p>
     </div>
   );
 }

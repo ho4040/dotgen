@@ -30,6 +30,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('image');
   const [paintColor, setPaintColor] = useState<RGB>({ r: 0, g: 0, b: 0 });
   const [erasing, setErasing] = useState(false);
+  const [eyedropping, setEyedropping] = useState(false);
   // De-dither mask brush state lives here so the shared preview can paint with it.
   const [maskBrush, setMaskBrush] = useState(1);
   const [maskErasing, setMaskErasing] = useState(false);
@@ -58,12 +59,26 @@ export default function App() {
 
   // Painting on the preview (paint mode) sets or reverts the pixel under the
   // pointer, using the color/erase state chosen in the 픽셀 수정 tab.
+  // Sample the result pixel at (x,y) into the paint color (eyedropper). Skips
+  // transparent pixels — there's no color to pick there.
+  const sampleColor = useCallback(
+    (x: number, y: number): void => {
+      const img = pa.result;
+      if (img === null) return;
+      const i = (y * img.width + x) * 4;
+      if (img.data[i + 3] < 128) return;
+      setPaintColor({ r: img.data[i], g: img.data[i + 1], b: img.data[i + 2] });
+    },
+    [pa.result],
+  );
+
   const handlePaintPixel = useCallback(
     (x: number, y: number): void => {
-      if (erasing) erasePixel(x, y);
+      if (eyedropping) sampleColor(x, y);
+      else if (erasing) erasePixel(x, y);
       else paintPixel(x, y, paintColor);
     },
-    [erasing, paintColor, paintPixel, erasePixel],
+    [eyedropping, sampleColor, erasing, paintColor, paintPixel, erasePixel],
   );
 
   // Painting in the 디더 정리 tab brushes the apply-mask instead of pixels.
@@ -216,7 +231,15 @@ export default function App() {
           color={paintColor}
           onColorChange={setPaintColor}
           erasing={erasing}
-          onErasingChange={setErasing}
+          onErasingChange={(v) => {
+            setErasing(v);
+            if (v) setEyedropping(false);
+          }}
+          eyedropping={eyedropping}
+          onEyedropChange={(v) => {
+            setEyedropping(v);
+            if (v) setErasing(false);
+          }}
           editCount={pa.pixelEdits.size}
           onClear={actions.clearPixelEdits}
         />
@@ -293,7 +316,7 @@ export default function App() {
                   <ZoomablePreview
                     image={previewImage}
                     {...(activeTab === 'pixel'
-                      ? { onPaintPixel: handlePaintPixel }
+                      ? { onPaintPixel: handlePaintPixel, onEyedrop: sampleColor }
                       : activeTab === 'dedither'
                         ? { onPaintPixel: handlePaintMask }
                         : { onPickColor: handlePickColor })}
