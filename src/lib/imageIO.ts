@@ -1,4 +1,33 @@
 /** Browser-side helpers for getting pixels in and PNGs out. */
+import { parsePixelKey } from './pixelEdits';
+import type { RGB } from './types';
+
+/**
+ * Return a copy of `image` with the `mask` positions blended toward `tint` so
+ * the user can see which pixels a region effect covers. Opaque pixels are
+ * tinted 50%; transparent ones are shown as a translucent tint patch.
+ */
+export function overlayMask(image: ImageData, mask: ReadonlySet<string>, tint: RGB): ImageData {
+  if (mask.size === 0) return image;
+  const out = new ImageData(new Uint8ClampedArray(image.data), image.width, image.height);
+  const d = out.data;
+  for (const key of mask) {
+    const { x, y } = parsePixelKey(key);
+    if (x < 0 || y < 0 || x >= image.width || y >= image.height) continue;
+    const i = (y * image.width + x) * 4;
+    if (d[i + 3] === 0) {
+      d[i] = tint.r;
+      d[i + 1] = tint.g;
+      d[i + 2] = tint.b;
+      d[i + 3] = 110;
+      continue;
+    }
+    d[i] = (d[i] + tint.r) >> 1;
+    d[i + 1] = (d[i + 1] + tint.g) >> 1;
+    d[i + 2] = (d[i + 2] + tint.b) >> 1;
+  }
+  return out;
+}
 
 function require2dContext(canvas: HTMLCanvasElement | OffscreenCanvas): CanvasRenderingContext2D {
   const ctx = (canvas as HTMLCanvasElement).getContext('2d', { willReadFrequently: true });

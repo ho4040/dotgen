@@ -244,6 +244,61 @@
   gap: 0.75rem;
 }
 
+/* De-dither tab */
+.dedither {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dedither__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.dedither__group:disabled {
+  opacity: 0.45;
+}
+
+.dedither__rule {
+  border: 0;
+  border-top: 1px solid #2a3242;
+  margin: 0.2rem 0;
+  width: 100%;
+}
+
+.dedither__subhead {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.seg {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.seg__btn {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #2a3242;
+  border-radius: 6px;
+  background: #0f131a;
+  color: #aeb6c6;
+  font: inherit;
+  cursor: pointer;
+}
+
+.seg__btn--on {
+  border-color: #5b8cff;
+  background: #1b2333;
+  color: #fff;
+}
+
 .field--check {
   flex-direction: row;
   align-items: center;

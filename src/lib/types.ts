@@ -49,6 +49,25 @@ export interface ResampleOptions {
   readonly supersample: number;
 }
 
+/** How a detected dithered region is recolored. */
+export type DeditherReplaceMode = 'snap' | 'new';
+
+/** Configuration for the de-dither (dither-cleanup) pass. */
+export interface DeditherParams {
+  /** Detection window radius in pixels (>= 1). Larger = coarser dither cells. */
+  readonly radius: number;
+  /** Max distinct colors a window may hold to count as dither (>= 2). */
+  readonly maxColors: number;
+  /** Min fraction of neighbouring pixel pairs that must differ (0–1). */
+  readonly threshold: number;
+  /** Connected dithered regions smaller than this (px) are left untouched. */
+  readonly minRegion: number;
+  /** Snap the middle color to the nearest existing color, or add it as new. */
+  readonly replaceMode: DeditherReplaceMode;
+  /** Position keys ("x,y") to limit the effect to; empty = whole image. */
+  readonly mask: ReadonlySet<string>;
+}
+
 export interface QuantizeOptions {
   readonly palette: Palette;
   /** Palette color ids that should be rendered fully transparent. */
@@ -76,6 +95,8 @@ export interface PipelineParams {
   readonly paletteEdits: ReadonlyMap<number, RGB>;
   /** When set, recolor the finished image onto this palette as a final pass. */
   readonly paletteOverride: Palette | null;
+  /** When set, detect dithered regions and flatten them to a middle color. */
+  readonly dedither: DeditherParams | null;
   /** When true, trace a 1px darkest-color outline along transparent seams. */
   readonly outline: boolean;
 }

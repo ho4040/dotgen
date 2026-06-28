@@ -3,6 +3,7 @@ import { adjustImage, NO_ADJUST, type EdgeAdjust } from '../lib/adjust';
 import { fetchImageFile, fileToImageData } from '../lib/imageIO';
 import { paletteFromJson } from '../lib/paletteIO';
 import { applyPixelEdits } from '../lib/pixelEdits';
+import { useDedither, type DeditherSettings } from './useDedither';
 import { useMerge } from './useMerge';
 import { useOutline } from './useOutline';
 import { usePaletteEdits } from './usePaletteEdits';
@@ -45,6 +46,10 @@ export interface PixelArtState {
   readonly processing: boolean;
   /** Whether a 1px boundary outline is drawn along transparent seams. */
   readonly outline: boolean;
+  /** De-dither (dither-cleanup) settings. */
+  readonly dedither: DeditherSettings;
+  /** Output positions the de-dither effect is limited to; empty = whole image. */
+  readonly deditherMask: ReadonlySet<string>;
 }
 
 export interface PixelArtActions {
@@ -74,6 +79,12 @@ export interface PixelArtActions {
   clearPaletteOverride: () => void;
   /** Toggle the transparent-seam outline pass. */
   setOutline: (on: boolean) => void;
+  /** Patch the de-dither settings. */
+  setDedither: (patch: Partial<DeditherSettings>) => void;
+  /** Brush the de-dither apply-mask under (x,y). */
+  paintDeditherMask: (x: number, y: number, brush: number, erase: boolean) => void;
+  /** Clear the de-dither apply-mask. */
+  clearDeditherMask: () => void;
 }
 
 export type UsePixelArt = PixelArtState & { readonly actions: PixelArtActions };
@@ -103,6 +114,13 @@ export function usePixelArt(): UsePixelArt {
   } = usePaletteEdits();
   const { edits: pixelEdits, paint: paintPixel, erase: erasePixel, clear: clearPixelEdits } = usePixelEdits();
   const { outline, setOutline } = useOutline();
+  const {
+    settings: dedither,
+    mask: deditherMask,
+    setSettings: setDedither,
+    paintMask: paintDeditherMask,
+    clearMask: clearDeditherMask,
+  } = useDedither();
 
   // The cropped/extended source that the rest of the pipeline operates on; the
   // raw `source` is kept only for the original-image preview.
@@ -130,13 +148,14 @@ export function usePixelArt(): UsePixelArt {
         clearMerges();
         clearPaletteEdits();
         clearPixelEdits();
+        clearDeditherMask();
         setStatus('ready');
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Failed to load image');
         setStatus('error');
       }
     },
-    [initForSource, clearTransparent, clearMerges, clearPaletteEdits, clearPixelEdits],
+    [initForSource, clearTransparent, clearMerges, clearPaletteEdits, clearPixelEdits, clearDeditherMask],
   );
 
   // Load from a remote URL by fetching it into a File, then reusing loadFile.
@@ -165,9 +184,19 @@ export function usePixelArt(): UsePixelArt {
       alphaThreshold: ALPHA_THRESHOLD,
       paletteEdits,
       paletteOverride,
+      dedither: dedither.enabled
+        ? {
+            radius: dedither.radius,
+            maxColors: dedither.maxColors,
+            threshold: dedither.threshold,
+            minRegion: dedither.minRegion,
+            replaceMode: dedither.replaceMode,
+            mask: deditherMask,
+          }
+        : null,
       outline,
     }),
-    [colorCount, transparentIds, mergeGroups, resample, paletteEdits, paletteOverride, outline],
+    [colorCount, transparentIds, mergeGroups, resample, paletteEdits, paletteOverride, dedither, deditherMask, outline],
   );
 
   const { palette, result: workerResult, processing } = usePipelineWorker(adjustedSource, params);
@@ -189,8 +218,9 @@ export function usePixelArt(): UsePixelArt {
     if (dims !== lastDimsRef.current) {
       lastDimsRef.current = dims;
       clearPixelEdits();
+      clearDeditherMask();
     }
-  }, [workerResult, clearPixelEdits]);
+  }, [workerResult, clearPixelEdits, clearDeditherMask]);
 
   const setColorCount = useCallback(
     (count: number): void => {
@@ -252,6 +282,8 @@ export function usePixelArt(): UsePixelArt {
     result,
     processing,
     outline,
+    dedither,
+    deditherMask,
     actions: {
       loadFile,
       loadUrl,
@@ -273,6 +305,9 @@ export function usePixelArt(): UsePixelArt {
       applyOverridePalette,
       clearPaletteOverride,
       setOutline,
+      setDedither,
+      paintDeditherMask,
+      clearDeditherMask,
     },
   };
 }

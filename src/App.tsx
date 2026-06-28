@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { nearestPaletteId } from './lib/paletteMatch';
+import { overlayMask } from './lib/imageIO';
 import { CanvasView } from './components/CanvasView';
 import { ColorSliders } from './components/ColorSliders';
+import { DeditherControls } from './components/DeditherControls';
 import { DownloadBar } from './components/DownloadBar';
 import { ImageUploader } from './components/ImageUploader';
 import { PaletteEditor } from './components/PaletteEditor';
@@ -28,6 +30,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('image');
   const [paintColor, setPaintColor] = useState<RGB>({ r: 0, g: 0, b: 0 });
   const [erasing, setErasing] = useState(false);
+  // De-dither mask brush state lives here so the shared preview can paint with it.
+  const [maskBrush, setMaskBrush] = useState(1);
+  const [maskErasing, setMaskErasing] = useState(false);
 
   // A new image or a different color count rebuilds the palette, so previously
   // selected ids no longer refer to the same colors — drop them.
@@ -60,6 +65,21 @@ export default function App() {
     },
     [erasing, paintColor, paintPixel, erasePixel],
   );
+
+  // Painting in the 디더 정리 tab brushes the apply-mask instead of pixels.
+  const handlePaintMask = useCallback(
+    (x: number, y: number): void => {
+      actions.paintDeditherMask(x, y, maskBrush, maskErasing);
+    },
+    [actions, maskBrush, maskErasing],
+  );
+
+  // While the 디더 정리 tab is active, show the mask as a tint over the result.
+  const previewImage = useMemo<ImageData | null>(() => {
+    if (pa.result === null) return null;
+    if (activeTab !== 'dedither' || pa.deditherMask.size === 0) return pa.result;
+    return overlayMask(pa.result, pa.deditherMask, { r: 80, g: 160, b: 255 });
+  }, [pa.result, pa.deditherMask, activeTab]);
 
   // Paste an image from the clipboard (Ctrl/Cmd+V) anywhere on the page.
   useEffect(() => {
@@ -203,6 +223,23 @@ export default function App() {
       ),
     },
     {
+      id: 'dedither',
+      label: '디더 정리',
+      content: (
+        <DeditherControls
+          hasResult={pa.result !== null}
+          settings={pa.dedither}
+          onSettings={actions.setDedither}
+          brush={maskBrush}
+          onBrush={setMaskBrush}
+          erasing={maskErasing}
+          onErasing={setMaskErasing}
+          maskCount={pa.deditherMask.size}
+          onClearMask={actions.clearDeditherMask}
+        />
+      ),
+    },
+    {
       id: 'export',
       label: '내보내기',
       content: pa.result ? (
@@ -251,13 +288,15 @@ export default function App() {
                   <CanvasView image={pa.source} displayWidth={320} className="checker" />
                 </figure>
               )}
-              {pa.result && (
+              {previewImage && (
                 <figure className="preview preview--result">
                   <ZoomablePreview
-                    image={pa.result}
+                    image={previewImage}
                     {...(activeTab === 'pixel'
                       ? { onPaintPixel: handlePaintPixel }
-                      : { onPickColor: handlePickColor })}
+                      : activeTab === 'dedither'
+                        ? { onPaintPixel: handlePaintMask }
+                        : { onPickColor: handlePickColor })}
                   />
                 </figure>
               )}

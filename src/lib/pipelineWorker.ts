@@ -7,6 +7,7 @@
  *  - main → worker `render`:    compute palette + result for the given params.
  *  - worker → main `rendered`:  palette + result pixels (buffer transferred).
  */
+import { applyDedither } from './dedither';
 import { buildPalette } from './kmeans';
 import { recolorMerged } from './mergePalette';
 import { applyOutline } from './outline';
@@ -92,6 +93,10 @@ ctx.onmessage = (event: MessageEvent<InboundMessage>): void => {
       alphaThreshold: 1,
     });
   }
+
+  // Clean up dithered regions before outlining, so the outline traces the
+  // flattened silhouette. Runs after merge/override so it sees final colors.
+  if (params.dedither !== null) applyDedither(result, params.dedither);
 
   // Final pass: outline the transparent/opaque seam with the darkest output
   // color. Runs last so it uses the effective (merged/overridden) colors and
