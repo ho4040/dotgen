@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { adjustImage, NO_ADJUST, type EdgeAdjust } from '../lib/adjust';
-import { fileToImageData } from '../lib/imageIO';
+import { fetchImageFile, fileToImageData } from '../lib/imageIO';
 import { paletteFromJson } from '../lib/paletteIO';
 import { applyPixelEdits } from '../lib/pixelEdits';
 import { useMerge } from './useMerge';
@@ -46,6 +46,7 @@ export interface PixelArtState {
 
 export interface PixelArtActions {
   loadFile: (file: File) => Promise<void>;
+  loadUrl: (url: string) => Promise<void>;
   setColorCount: (count: number) => void;
   toggleTransparentMany: (ids: readonly number[]) => void;
   clearTransparent: () => void;
@@ -130,6 +131,23 @@ export function usePixelArt(): UsePixelArt {
       }
     },
     [initForSource, clearTransparent, clearMerges, clearPaletteEdits, clearPixelEdits],
+  );
+
+  // Load from a remote URL by fetching it into a File, then reusing loadFile.
+  // CORS failures surface as the error thrown by fetchImageFile.
+  const loadUrl = useCallback(
+    async (url: string): Promise<void> => {
+      setStatus('loading');
+      setError(null);
+      try {
+        const file = await fetchImageFile(url);
+        await loadFile(file);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Failed to load image');
+        setStatus('error');
+      }
+    },
+    [loadFile],
   );
 
   const params = useMemo<PipelineParams>(
@@ -228,6 +246,7 @@ export function usePixelArt(): UsePixelArt {
     processing,
     actions: {
       loadFile,
+      loadUrl,
       setColorCount,
       toggleTransparentMany,
       clearTransparent,

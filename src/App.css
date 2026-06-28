@@ -171,6 +171,34 @@
   font-size: 0.8rem;
 }
 
+.uploader-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uploader__url {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.uploader__url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #364154;
+  border-radius: 8px;
+  background: #141a26;
+  color: inherit;
+  font-size: 0.85rem;
+}
+
+.uploader__url-input:focus {
+  outline: none;
+  border-color: #5b8cff;
+}
+
 /* Controls */
 .controls {
   display: flex;

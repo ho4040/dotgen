@@ -95,7 +95,11 @@ export default function App() {
       label: '이미지 · 크기',
       content: (
         <>
-          <ImageUploader onFile={(file) => void actions.loadFile(file)} disabled={pa.status === 'loading'} />
+          <ImageUploader
+            onFile={(file) => void actions.loadFile(file)}
+            onUrl={(url) => void actions.loadUrl(url)}
+            disabled={pa.status === 'loading'}
+          />
           {pa.source && (
             <p className="muted">
               {pa.sourceName} — {pa.source.width}×{pa.source.height}px

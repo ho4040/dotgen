@@ -21,6 +21,42 @@ export async function fileToImageData(file: File): Promise<ImageData> {
   }
 }
 
+/**
+ * Fetch an image from a URL and wrap it in a `File` for the normal load path.
+ *
+ * Subject to CORS: the host must send `Access-Control-Allow-Origin`, otherwise
+ * the fetch is blocked (this is a static, server-only app — no proxy to work
+ * around it). The thrown messages explain that to the user.
+ */
+export async function fetchImageFile(url: string): Promise<File> {
+  const trimmed = url.trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new Error('http(s):// 로 시작하는 이미지 주소를 입력하세요');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(trimmed, { mode: 'cors' });
+  } catch {
+    throw new Error('이미지를 가져오지 못했습니다 (CORS 미허용 주소이거나 네트워크 오류)');
+  }
+  if (!res.ok) throw new Error(`이미지 요청 실패 (HTTP ${res.status})`);
+
+  const blob = await res.blob();
+  if (!blob.type.startsWith('image/')) {
+    throw new Error('이미지가 아닌 응답입니다 (직접 이미지 파일 주소를 사용하세요)');
+  }
+
+  let name = 'image';
+  try {
+    const base = new URL(trimmed).pathname.split('/').pop();
+    if (base) name = decodeURIComponent(base);
+  } catch {
+    /* keep fallback name */
+  }
+  return new File([blob], name, { type: blob.type });
+}
+
 /** Render ImageData to a canvas, optionally upscaled with nearest-neighbor. */
 export function imageDataToCanvas(image: ImageData, scale = 1): HTMLCanvasElement {
   const factor = Math.max(1, Math.floor(scale));
